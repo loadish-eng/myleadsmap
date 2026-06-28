@@ -1,0 +1,42 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "description": "The role of the user in the app",
+      "enum": [
+        "admin",
+        "user"
+      ]
+    },
+    "subscription_status": {
+      "type": "string",
+      "enum": [
+        "inactive",
+        "active",
+        "canceled",
+        "past_due"
+      ],
+      "default": "inactive"
+    },
+    "subscription_plan": {
+      "type": "string",
+      "enum": [
+        "standard",
+        "premium"
+      ],
+      "default": "premium"
+    },
+    "stripe_customer_id": {
+      "type": "string"
+    },
+    "google_api_key": {
+      "type": "string",
+      "description": "Standard users provide their own Google Maps API key"
+    }
+  },
+  "required": [
+    "role"
+  ]
+}
