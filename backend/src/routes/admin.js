@@ -70,21 +70,30 @@ router.post('/users/:id/reset-password', async (req, res) => {
   }
 });
 
-const SIGNUP_REQUEST_STATUSES = ['new', 'contacted', 'created', 'dismissed'];
+router.delete('/users/:id', async (req, res) => {
+  if (req.params.id === req.user.id) {
+    return res.status(400).json({ error: 'You cannot remove your own account' });
+  }
+  try {
+    await prisma.user.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
+  } catch {
+    res.status(404).json({ error: 'User not found' });
+  }
+});
 
 router.get('/signup-requests', async (req, res) => {
-  const requests = await prisma.signupRequest.findMany({ orderBy: { createdAt: 'desc' } });
+  const requests = await prisma.signupRequest.findMany({
+    where: { status: 'new' },
+    orderBy: { createdAt: 'desc' },
+  });
   res.json(requests.map(toPublicSignupRequest));
 });
 
-router.patch('/signup-requests/:id', async (req, res) => {
-  const { status } = req.body || {};
-  if (!SIGNUP_REQUEST_STATUSES.includes(status)) {
-    return res.status(400).json({ error: `status must be one of: ${SIGNUP_REQUEST_STATUSES.join(', ')}` });
-  }
+router.delete('/signup-requests/:id', async (req, res) => {
   try {
-    const request = await prisma.signupRequest.update({ where: { id: req.params.id }, data: { status } });
-    res.json(toPublicSignupRequest(request));
+    await prisma.signupRequest.delete({ where: { id: req.params.id } });
+    res.json({ success: true });
   } catch {
     res.status(404).json({ error: 'Signup request not found' });
   }

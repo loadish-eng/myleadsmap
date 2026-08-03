@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/client';
-import { ArrowLeft, Loader2, AlertCircle, Plus, KeyRound, X, Check, Mail, UserPlus } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, Plus, KeyRound, X, Check, Mail, UserPlus, UserX, Trash2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const emptyForm = { email: '', password: '', full_name: '', role: 'user', subscription_plan: 'premium', subscription_status: 'active' };
@@ -53,8 +53,8 @@ export default function AdminUsers() {
     try {
       await api.admin.createUser(form);
       if (fromRequestId) {
-        await api.admin.updateSignupRequest(fromRequestId, 'created');
-        setRequests((prev) => prev.map((r) => (r.id === fromRequestId ? { ...r, status: 'created' } : r)));
+        await api.admin.deleteSignupRequest(fromRequestId);
+        setRequests((prev) => prev.filter((r) => r.id !== fromRequestId));
       }
       setForm(emptyForm);
       setFromRequestId(null);
@@ -87,13 +87,16 @@ export default function AdminUsers() {
     }
   };
 
-  const handleRequestStatus = async (id, status) => {
+  const handleRemoveUser = async (user) => {
+    if (!window.confirm(`Remove ${user.email}? This also permanently deletes all of their leads. This cannot be undone.`)) {
+      return;
+    }
     setError('');
     try {
-      const updated = await api.admin.updateSignupRequest(id, status);
-      setRequests((prev) => prev.map((r) => (r.id === id ? updated : r)));
+      await api.admin.deleteUser(user.id);
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
     } catch (err) {
-      setError(err.message || 'Failed to update request');
+      setError(err.message || 'Failed to remove user');
     }
   };
 
@@ -103,7 +106,15 @@ export default function AdminUsers() {
     setShowCreate(true);
   };
 
-  const pendingRequests = requests.filter((r) => r.status === 'new');
+  const handleDenyRequest = async (id) => {
+    setError('');
+    try {
+      await api.admin.deleteSignupRequest(id);
+      setRequests((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      setError(err.message || 'Failed to deny request');
+    }
+  };
 
   return (
     <div className="fixed inset-0 flex flex-col bg-background overflow-auto">
@@ -201,8 +212,8 @@ export default function AdminUsers() {
         <h2 className="text-sm font-semibold flex items-center gap-2 mb-3">
           <Mail className="w-4 h-4" />
           Signup Requests
-          {pendingRequests.length > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-foreground text-background text-xs">{pendingRequests.length} new</span>
+          {requests.length > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-foreground text-background text-xs">{requests.length} new</span>
           )}
         </h2>
         {loadingRequests ? (
@@ -210,7 +221,7 @@ export default function AdminUsers() {
             <Loader2 className="w-5 h-5 animate-spin" />
           </div>
         ) : requests.length === 0 ? (
-          <p className="text-sm text-muted-foreground pb-4">No one has requested access yet.</p>
+          <p className="text-sm text-muted-foreground pb-4">No pending requests.</p>
         ) : (
           <div className="space-y-2 pb-4">
             {requests.map((r) => (
@@ -224,22 +235,20 @@ export default function AdminUsers() {
                   {r.message && <p className="text-sm text-muted-foreground mt-1">{r.message}</p>}
                   <p className="text-xs text-muted-foreground mt-1">{new Date(r.created_date).toLocaleString()}</p>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <Select value={r.status} onValueChange={(v) => handleRequestStatus(r.id, v)}>
-                    <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="new">New</SelectItem>
-                      <SelectItem value="contacted">Contacted</SelectItem>
-                      <SelectItem value="created">Created</SelectItem>
-                      <SelectItem value="dismissed">Dismissed</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex flex-col items-stretch gap-1.5 flex-shrink-0">
                   <button
                     onClick={() => handleCreateFromRequest(r)}
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-foreground text-background text-xs font-medium hover:bg-foreground/90 whitespace-nowrap"
                   >
                     <UserPlus className="w-3.5 h-3.5" />
                     Create Account
+                  </button>
+                  <button
+                    onClick={() => handleDenyRequest(r.id)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-destructive/30 text-destructive text-xs font-medium hover:bg-destructive/5 whitespace-nowrap"
+                  >
+                    <UserX className="w-3.5 h-3.5" />
+                    Deny Request
                   </button>
                 </div>
               </div>
@@ -263,6 +272,7 @@ export default function AdminUsers() {
                 <th className="py-3 pr-4 font-medium">Plan</th>
                 <th className="py-3 pr-4 font-medium">Status</th>
                 <th className="py-3 pr-4 font-medium">Password</th>
+                <th className="py-3 pr-4 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -313,6 +323,16 @@ export default function AdminUsers() {
                         Reset Password
                       </button>
                     )}
+                  </td>
+                  <td className="py-3 pr-4">
+                    <button
+                      onClick={() => handleRemoveUser(u)}
+                      title="Remove user"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-destructive/30 text-destructive text-xs font-medium hover:bg-destructive/5 whitespace-nowrap"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Remove
+                    </button>
                   </td>
                 </tr>
               ))}
