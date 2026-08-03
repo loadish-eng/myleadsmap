@@ -57,7 +57,7 @@ npm install
 npm run dev              # http://localhost:5173, proxies /api to http://localhost:3001
 ```
 
-## Exposing it to other people
+## Quick sharing without a domain
 
 `scripts/serve_via_tailscale_funnel.ps1` puts the running Compose stack on the public internet via
 [Tailscale Funnel](https://tailscale.com/kb/1223/funnel) — no router port-forwarding, no domain, no
@@ -71,6 +71,42 @@ certificate management. Requires the `tailscale` CLI installed and logged in
 ```
 
 Run it with `-Stop` to remove the funnel mapping, or `-Status` to check the current mapping.
+
+## Production deployment (DigitalOcean + your own domain)
+
+`docker-compose.prod.yml` is an override that adds Caddy in front of the app for automatic HTTPS
+and stops publishing the frontend's port directly (only Caddy is reachable from outside).
+
+**First-time setup:**
+
+1. Create a Droplet in the DigitalOcean console — Basic, 1 vCPU / 2GB RAM is a reasonable
+   starting size for this app's load. Paste `~/.ssh/myleadsmap_droplet.pub`'s contents into the
+   "New SSH Key" option during creation so the droplet boots with it already trusted.
+2. Point your domain's DNS **A record** at the droplet's public IP (in your registrar's DNS
+   panel). A droplet has a fixed IP, so this is a one-time change — no dynamic DNS needed.
+3. SSH into the droplet and install Docker (follow
+   [Docker's official install instructions](https://docs.docker.com/engine/install/) for
+   whatever distro you picked).
+4. Clone this repo onto the droplet (to `/opt/myleadsmap` if you're using the defaults), then
+   `cp .env.example .env` and fill in real values — same as local, plus set `DOMAIN` to your
+   real domain name.
+5. First deploy, run on the droplet itself:
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+   ```
+   Caddy requests its Let's Encrypt certificate for `DOMAIN` the moment it starts — make sure
+   the DNS record from step 2 has propagated first, or the ACME challenge will fail.
+6. Visit `https://yourdomain.com` and confirm it loads with a valid certificate.
+
+**Redeploying after that** (run from your local machine, not the droplet):
+
+```bash
+cp .env.deploy.example .env.deploy   # once, then fill in DROPLET_HOST with your droplet's IP
+./scripts/deploy_to_droplet.ps1
+```
+
+This SSHs in, pulls `main`, and rebuilds/restarts the stack in place — the usual "push a fix,
+redeploy" loop.
 
 ## Notes on scope
 
