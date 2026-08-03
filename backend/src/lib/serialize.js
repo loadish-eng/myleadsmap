@@ -12,6 +12,19 @@ export function toPublicUser(u) {
   };
 }
 
+export function toPublicSignupRequest(s) {
+  return {
+    id: s.id,
+    name: s.name,
+    email: s.email,
+    company: s.company,
+    message: s.message,
+    status: s.status,
+    created_date: s.createdAt,
+    updated_date: s.updatedAt,
+  };
+}
+
 export function toPublicLead(l) {
   return {
     id: l.id,

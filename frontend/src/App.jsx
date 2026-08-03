@@ -10,6 +10,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import LeadMapper from '@/pages/LeadMapper';
 import Dashboard from '@/pages/Dashboard';
 import Login from '@/pages/Login';
+import Register from '@/pages/Register';
 import Profile from '@/pages/Profile';
 import About from '@/pages/About';
 import Legal from '@/pages/Legal';
@@ -31,6 +32,7 @@ const AuthenticatedApp = () => {
       <Route path="/about" element={<About />} />
       <Route path="/legal" element={<Legal />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route path="/profile" element={<Profile />} />
       </Route>

@@ -4,7 +4,7 @@ import { prisma } from '../db.js';
 import { hashPassword } from '../lib/password.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/requireAdmin.js';
-import { toPublicUser } from '../lib/serialize.js';
+import { toPublicUser, toPublicSignupRequest } from '../lib/serialize.js';
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -67,6 +67,26 @@ router.post('/users/:id/reset-password', async (req, res) => {
     res.json({ success: true, temporaryPassword: useProvided ? undefined : password });
   } catch {
     res.status(404).json({ error: 'User not found' });
+  }
+});
+
+const SIGNUP_REQUEST_STATUSES = ['new', 'contacted', 'created', 'dismissed'];
+
+router.get('/signup-requests', async (req, res) => {
+  const requests = await prisma.signupRequest.findMany({ orderBy: { createdAt: 'desc' } });
+  res.json(requests.map(toPublicSignupRequest));
+});
+
+router.patch('/signup-requests/:id', async (req, res) => {
+  const { status } = req.body || {};
+  if (!SIGNUP_REQUEST_STATUSES.includes(status)) {
+    return res.status(400).json({ error: `status must be one of: ${SIGNUP_REQUEST_STATUSES.join(', ')}` });
+  }
+  try {
+    const request = await prisma.signupRequest.update({ where: { id: req.params.id }, data: { status } });
+    res.json(toPublicSignupRequest(request));
+  } catch {
+    res.status(404).json({ error: 'Signup request not found' });
   }
 });
 

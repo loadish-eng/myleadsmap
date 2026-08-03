@@ -52,6 +52,17 @@ model Lead {
   @@unique([ownerId, placeId])
 }
 
+model SignupRequest {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  company   String?
+  message   String?
+  status    String   @default("new") // new | contacted | created | dismissed
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model PlaceCache {
   id        String   @id @default(uuid())
   cacheKey  String   @unique

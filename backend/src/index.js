@@ -4,6 +4,7 @@ import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import leadsRoutes from './routes/leads.js';
 import placesRoutes from './routes/places.js';
+import signupRequestsRoutes from './routes/signupRequests.js';
 
 const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN || true }));
@@ -14,6 +15,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/places', placesRoutes);
+app.use('/api/signup-requests', signupRequestsRoutes);
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {

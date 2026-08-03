@@ -79,5 +79,11 @@ export const api = {
     updateUser: (id, data) => request(`/admin/users/${id}`, { method: 'PATCH', body: data }),
     resetPassword: (id, newPassword) =>
       request(`/admin/users/${id}/reset-password`, { method: 'POST', body: { newPassword } }),
+    listSignupRequests: () => request('/admin/signup-requests'),
+    updateSignupRequest: (id, status) =>
+      request(`/admin/signup-requests/${id}`, { method: 'PATCH', body: { status } }),
+  },
+  signupRequests: {
+    create: (data) => request('/signup-requests', { method: 'POST', body: data }),
   },
 };
