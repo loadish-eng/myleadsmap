@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  user
+}
+
+model User {
+  id                 String   @id @default(uuid())
+  email              String   @unique
+  passwordHash       String
+  fullName           String?
+  role               Role     @default(user)
+  subscriptionStatus String   @default("active")
+  subscriptionPlan   String   @default("premium")
+  googleApiKey       String?
+  leads              Lead[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Lead {
+  id             String   @id @default(uuid())
+  ownerId        String
+  owner          User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  placeId        String
+  name           String
+  address        String?
+  category       String?
+  lat            Float
+  lng            Float
+  phone          String?
+  website        String?
+  pipelineStage  String   @default("prospect")
+  contactName    String?
+  contactPhone   String?
+  contactEmail   String?
+  notes          String?
+  lastActionType String?
+  lastActionDate String?
+  actions        Json     @default("[]")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([ownerId, placeId])
+}
+
+model PlaceCache {
+  id        String   @id @default(uuid())
+  cacheKey  String   @unique
+  result    Json
+  keyword   String?
+  lat       Float?
+  lng       Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
