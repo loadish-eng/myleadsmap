@@ -24,7 +24,6 @@ const LEAD_EXPORT_COLUMNS = [
   { key: 'notes', label: 'Notes' },
   { key: 'last_action_type', label: 'Last Action Type' },
   { key: 'last_action_date', label: 'Last Action Date' },
-  { key: 'actions', label: 'Actions (JSON)' },
   { key: 'created_date', label: 'Created' },
   { key: 'updated_date', label: 'Updated' },
 ];
