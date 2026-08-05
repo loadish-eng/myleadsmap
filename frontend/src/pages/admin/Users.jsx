@@ -15,6 +15,7 @@ export default function AdminUsers() {
   const [form, setForm] = useState(emptyForm);
   const [creating, setCreating] = useState(false);
   const [resetResult, setResetResult] = useState(null);
+  const [passwordDrafts, setPasswordDrafts] = useState({});
   const [fromRequestId, setFromRequestId] = useState(null);
 
   const [requests, setRequests] = useState([]);
@@ -78,10 +79,16 @@ export default function AdminUsers() {
   };
 
   const handleResetPassword = async (id) => {
+    const draft = passwordDrafts[id] || '';
+    if (draft && draft.length < 8) {
+      setError('Password must be at least 8 characters (or leave it blank to generate one).');
+      return;
+    }
     setError('');
     try {
-      const result = await api.admin.resetPassword(id, '');
-      setResetResult({ id, password: result.temporaryPassword });
+      const result = await api.admin.resetPassword(id, draft);
+      setResetResult({ id, password: draft || result.temporaryPassword });
+      setPasswordDrafts((prev) => ({ ...prev, [id]: '' }));
     } catch (err) {
       setError(err.message || 'Failed to reset password');
     }
@@ -315,13 +322,23 @@ export default function AdminUsers() {
                         </button>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => handleResetPassword(u.id)}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-secondary"
-                      >
-                        <KeyRound className="w-3.5 h-3.5" />
-                        Reset Password
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          placeholder="Set password (blank = random)"
+                          value={passwordDrafts[u.id] || ''}
+                          onChange={(e) => setPasswordDrafts((prev) => ({ ...prev, [u.id]: e.target.value }))}
+                          className="w-44 px-2 py-1.5 text-xs rounded-lg border border-border bg-background"
+                        />
+                        <button
+                          onClick={() => handleResetPassword(u.id)}
+                          title={passwordDrafts[u.id] ? 'Set this password for the user' : 'Generate a random password'}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-secondary whitespace-nowrap"
+                        >
+                          <KeyRound className="w-3.5 h-3.5" />
+                          Set
+                        </button>
+                      </div>
                     )}
                   </td>
                   <td className="py-3 pr-4">
