@@ -62,6 +62,7 @@ export const api = {
       create: (data) => request('/leads', { method: 'POST', body: data }),
       update: (id, data) => request(`/leads/${id}`, { method: 'PATCH', body: data }),
       delete: (id) => request(`/leads/${id}`, { method: 'DELETE' }),
+      deleteMany: (ids) => request('/leads', { method: 'DELETE', body: { ids } }),
     },
   },
   functions: {
@@ -82,6 +83,32 @@ export const api = {
     deleteUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
     listSignupRequests: () => request('/admin/signup-requests'),
     deleteSignupRequest: (id) => request(`/admin/signup-requests/${id}`, { method: 'DELETE' }),
+    async exportLeads(params) {
+      const query = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''))
+      ).toString();
+      const token = getToken();
+      const res = await fetch(`/api/admin/leads/export?${query}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        let message = `Request failed (${res.status})`;
+        try {
+          const data = await res.json();
+          message = data?.error || message;
+        } catch {
+          // no JSON body
+        }
+        const error = new Error(message);
+        error.status = res.status;
+        throw error;
+      }
+      const disposition = res.headers.get('Content-Disposition') || '';
+      const match = disposition.match(/filename="([^"]+)"/);
+      const filename = match ? match[1] : 'leads-export.json';
+      const blob = await res.blob();
+      return { blob, filename };
+    },
   },
   signupRequests: {
     create: (data) => request('/signup-requests', { method: 'POST', body: data }),

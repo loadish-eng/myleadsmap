@@ -4,7 +4,30 @@ import { prisma } from '../db.js';
 import { hashPassword } from '../lib/password.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/requireAdmin.js';
-import { toPublicUser, toPublicSignupRequest } from '../lib/serialize.js';
+import { toPublicUser, toPublicSignupRequest, toPublicLead } from '../lib/serialize.js';
+import { toCsv } from '../lib/csv.js';
+
+const LEAD_EXPORT_COLUMNS = [
+  { key: 'id', label: 'ID' },
+  { key: 'place_id', label: 'Place ID' },
+  { key: 'name', label: 'Name' },
+  { key: 'address', label: 'Address' },
+  { key: 'category', label: 'Category' },
+  { key: 'lat', label: 'Latitude' },
+  { key: 'lng', label: 'Longitude' },
+  { key: 'phone', label: 'Phone' },
+  { key: 'website', label: 'Website' },
+  { key: 'pipeline_stage', label: 'Stage' },
+  { key: 'contact_name', label: 'Contact Name' },
+  { key: 'contact_phone', label: 'Contact Phone' },
+  { key: 'contact_email', label: 'Contact Email' },
+  { key: 'notes', label: 'Notes' },
+  { key: 'last_action_type', label: 'Last Action Type' },
+  { key: 'last_action_date', label: 'Last Action Date' },
+  { key: 'actions', label: 'Actions (JSON)' },
+  { key: 'created_date', label: 'Created' },
+  { key: 'updated_date', label: 'Updated' },
+];
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -97,6 +120,41 @@ router.delete('/signup-requests/:id', async (req, res) => {
   } catch {
     res.status(404).json({ error: 'Signup request not found' });
   }
+});
+
+router.get('/leads/export', async (req, res) => {
+  const { email, stage, category, action_type, date_from, date_to, format } = req.query;
+
+  if (!email) {
+    return res.status(400).json({ error: 'email query param is required' });
+  }
+
+  const targetUser = await prisma.user.findUnique({ where: { email: String(email).toLowerCase().trim() } });
+  if (!targetUser) {
+    return res.status(404).json({ error: 'No user found with that email' });
+  }
+
+  const where = { ownerId: targetUser.id };
+  if (stage) where.pipelineStage = String(stage);
+  if (category) where.category = String(category);
+  if (action_type) where.lastActionType = String(action_type);
+  if (date_from || date_to) {
+    where.lastActionDate = {};
+    if (date_from) where.lastActionDate.gte = String(date_from);
+    if (date_to) where.lastActionDate.lte = String(date_to);
+  }
+
+  const leads = await prisma.lead.findMany({ where, orderBy: { updatedAt: 'desc' } });
+  const rows = leads.map(toPublicLead);
+
+  if (format === 'csv') {
+    const csv = toCsv(rows, LEAD_EXPORT_COLUMNS);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="leads-${targetUser.email}.csv"`);
+    return res.send(csv);
+  }
+
+  res.json(rows);
 });
 
 export default router;

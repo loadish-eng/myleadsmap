@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/client';
-import { ArrowLeft, Loader2, AlertCircle, Plus, KeyRound, X, Check, Mail, UserPlus, UserX, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, Plus, KeyRound, X, Check, Mail, UserPlus, UserX, Trash2, Download } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { STAGES, ACTION_TYPES } from '@/lib/leadConfig';
 
 const emptyForm = { email: '', password: '', full_name: '', role: 'user', subscription_plan: 'premium', subscription_status: 'active' };
+const emptyExportForm = { email: '', stage: 'all', action_type: 'all', category: '', date_from: '', date_to: '', format: 'csv' };
 
 export default function AdminUsers() {
   const navigate = useNavigate();
@@ -20,6 +22,9 @@ export default function AdminUsers() {
 
   const [requests, setRequests] = useState([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
+
+  const [exportForm, setExportForm] = useState(emptyExportForm);
+  const [exporting, setExporting] = useState(false);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -120,6 +125,36 @@ export default function AdminUsers() {
       setRequests((prev) => prev.filter((r) => r.id !== id));
     } catch (err) {
       setError(err.message || 'Failed to deny request');
+    }
+  };
+
+  const handleExport = async (e) => {
+    e.preventDefault();
+    if (!exportForm.email) return;
+    setError('');
+    setExporting(true);
+    try {
+      const { blob, filename } = await api.admin.exportLeads({
+        email: exportForm.email,
+        stage: exportForm.stage === 'all' ? undefined : exportForm.stage,
+        action_type: exportForm.action_type === 'all' ? undefined : exportForm.action_type,
+        category: exportForm.category || undefined,
+        date_from: exportForm.date_from || undefined,
+        date_to: exportForm.date_to || undefined,
+        format: exportForm.format,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message || 'Failed to export leads');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -356,6 +391,92 @@ export default function AdminUsers() {
             </tbody>
           </table>
         )}
+      </div>
+
+      <div className="px-6 pb-6">
+        <h2 className="text-sm font-semibold flex items-center gap-2 mb-3">
+          <Download className="w-4 h-4" />
+          Export Leads
+        </h2>
+        <form onSubmit={handleExport} className="p-4 rounded-xl border border-border bg-card grid grid-cols-2 gap-3">
+          <select
+            required
+            value={exportForm.email}
+            onChange={(e) => setExportForm({ ...exportForm, email: e.target.value })}
+            className="px-3 py-2 text-sm rounded-lg border border-border bg-background col-span-2"
+          >
+            <option value="" disabled>Select a user...</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.email}>{u.email}</option>
+            ))}
+          </select>
+
+          <Select value={exportForm.stage} onValueChange={(v) => setExportForm({ ...exportForm, stage: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Any Stage</SelectItem>
+              {Object.entries(STAGES).map(([key, cfg]) => (
+                <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={exportForm.action_type} onValueChange={(v) => setExportForm({ ...exportForm, action_type: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Any Last Action</SelectItem>
+              {Object.entries(ACTION_TYPES).map(([key, cfg]) => (
+                <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <input
+            type="text"
+            placeholder="Business category (optional, e.g. restaurant)"
+            value={exportForm.category}
+            onChange={(e) => setExportForm({ ...exportForm, category: e.target.value })}
+            className="px-3 py-2 text-sm rounded-lg border border-border bg-background col-span-2"
+          />
+
+          <div>
+            <label className="text-xs text-muted-foreground">Last action from</label>
+            <input
+              type="date"
+              value={exportForm.date_from}
+              onChange={(e) => setExportForm({ ...exportForm, date_from: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-border bg-background"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">Last action to</label>
+            <input
+              type="date"
+              value={exportForm.date_to}
+              onChange={(e) => setExportForm({ ...exportForm, date_to: e.target.value })}
+              className="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-border bg-background"
+            />
+          </div>
+
+          <Select value={exportForm.format} onValueChange={(v) => setExportForm({ ...exportForm, format: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="csv">CSV</SelectItem>
+              <SelectItem value="json">JSON</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <div className="flex items-center justify-end">
+            <button
+              type="submit"
+              disabled={exporting || !exportForm.email}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-foreground text-background text-sm font-medium hover:bg-foreground/90 disabled:opacity-50"
+            >
+              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              Download
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

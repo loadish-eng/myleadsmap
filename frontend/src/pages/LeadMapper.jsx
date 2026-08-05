@@ -330,6 +330,7 @@ export default function LeadMapper() {
               center={mapCenter}
               places={places}
               leads={leads}
+              userLocation={userLocation}
               onPlaceClick={handlePlaceClick}
               onCenterChanged={handleCenterChanged}
             />

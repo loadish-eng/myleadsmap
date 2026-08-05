@@ -82,6 +82,18 @@ router.patch('/:id', async (req, res) => {
   res.json(toPublicLead(updated));
 });
 
+router.delete('/', async (req, res) => {
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter((id) => typeof id === 'string') : [];
+  if (ids.length === 0) {
+    return res.status(400).json({ error: 'ids must be a non-empty array of lead ids' });
+  }
+
+  const result = await prisma.lead.deleteMany({
+    where: { id: { in: ids }, ownerId: req.user.id },
+  });
+  res.json({ success: true, deletedCount: result.count });
+});
+
 router.delete('/:id', async (req, res) => {
   const existing = await prisma.lead.findFirst({ where: { id: req.params.id, ownerId: req.user.id } });
   if (!existing) return res.status(404).json({ error: 'Lead not found' });

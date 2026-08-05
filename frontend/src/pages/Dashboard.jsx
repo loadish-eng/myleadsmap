@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api } from '@/api/client';
 import { useNavigate } from 'react-router-dom';
-import { Map as MapIcon, CircleUser } from 'lucide-react';
+import { Map as MapIcon, CircleUser, Trash2, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getStages } from '@/lib/leadConfig';
 import StageBadge from '@/components/lead-mapper/StageBadge';
@@ -13,6 +13,8 @@ export default function Dashboard() {
   const [stageFilter, setStageFilter] = useState('all');
   const [sortOrder, setSortOrder] = useState('newest');
   const [subscriptionPlan, setSubscriptionPlan] = useState('premium');
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadLeads();
@@ -50,6 +52,41 @@ export default function Dashboard() {
 
     return result;
   }, [leads, stageFilter, sortOrder]);
+
+  const allVisibleSelected = filteredLeads.length > 0 && filteredLeads.every(l => selectedIds.has(l.id));
+
+  const toggleSelectAll = () => {
+    setSelectedIds(prev => {
+      if (allVisibleSelected) return new Set();
+      return new Set(filteredLeads.map(l => l.id));
+    });
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.size} lead${selectedIds.size === 1 ? '' : 's'}? This cannot be undone.`)) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await api.entities.Lead.deleteMany([...selectedIds]);
+      setLeads(prev => prev.filter(l => !selectedIds.has(l.id)));
+      setSelectedIds(new Set());
+    } catch (err) {
+      console.error('Failed to delete leads:', err);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 flex flex-col bg-background">
@@ -95,9 +132,20 @@ export default function Dashboard() {
           </SelectContent>
         </Select>
 
-        <span className="text-sm text-muted-foreground ml-auto">
-          Showing {filteredLeads.length} of {leads.length} leads
-        </span>
+        {selectedIds.size > 0 ? (
+          <button
+            onClick={handleBulkDelete}
+            disabled={deleting}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 disabled:opacity-50"
+          >
+            {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            Delete Selected ({selectedIds.size})
+          </button>
+        ) : (
+          <span className="text-sm text-muted-foreground ml-auto">
+            Showing {filteredLeads.length} of {leads.length} leads
+          </span>
+        )}
       </div>
 
       <div className="flex-1 overflow-auto">
@@ -113,6 +161,14 @@ export default function Dashboard() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase text-muted-foreground">
+                <th className="pl-6 pr-2 py-3 font-medium w-8">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={toggleSelectAll}
+                    aria-label="Select all leads"
+                  />
+                </th>
                 <th className="px-6 py-3 font-medium">Business</th>
                 <th className="px-6 py-3 font-medium">Address</th>
                 <th className="px-6 py-3 font-medium">Phone</th>
@@ -123,7 +179,15 @@ export default function Dashboard() {
             </thead>
             <tbody>
               {filteredLeads.map(lead => (
-                <tr key={lead.id} className="border-b border-border hover:bg-secondary/50">
+                <tr key={lead.id} className={`border-b border-border hover:bg-secondary/50 ${selectedIds.has(lead.id) ? 'bg-secondary/40' : ''}`}>
+                  <td className="pl-6 pr-2 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(lead.id)}
+                      onChange={() => toggleSelect(lead.id)}
+                      aria-label={`Select ${lead.name}`}
+                    />
+                  </td>
                   <td className="px-6 py-3 font-medium">{lead.name}</td>
                   <td className="px-6 py-3 text-muted-foreground">{lead.address}</td>
                   <td className="px-6 py-3 text-muted-foreground">{lead.phone || '—'}</td>
