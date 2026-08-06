@@ -1,16 +1,16 @@
 import { Phone, Mail, PhoneCall, XCircle, Scale, Stethoscope, Utensils, Briefcase, Scissors, Car, Dumbbell, GraduationCap, Building2 } from 'lucide-react';
 
 export const STAGES = {
-  prospect: { label: 'Prospect', color: '#A0A0A0' },
-  pitched: { label: 'Pitched', color: '#5B7B9A' },
-  following_up: { label: 'Following Up', color: '#A88B5C' },
-  closed: { label: 'Closed', color: '#0F0F0F' },
-  open: { label: 'Open', color: '#5B7B9A' },
+  prospect: { label: 'Prospect', color: '#3B82F6' },
+  pitched: { label: 'Pitched', color: '#F59E0B' },
+  following_up: { label: 'Following Up', color: '#A855F7' },
+  closed: { label: 'Closed', color: '#10B981' },
+  open: { label: 'Open', color: '#3B82F6' },
 };
 
 export const STANDARD_STAGES = {
-  open: { label: 'Open', color: '#5B7B9A' },
-  closed: { label: 'Closed', color: '#0F0F0F' },
+  open: { label: 'Open', color: '#3B82F6' },
+  closed: { label: 'Closed', color: '#10B981' },
 };
 
 export function getStages(plan) {

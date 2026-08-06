@@ -1,9 +1,6 @@
-const STAGE_COLORS = {
-  prospect: '#A0A0A0',
-  pitched: '#5B7B9A',
-  following_up: '#A88B5C',
-  closed: '#0F0F0F',
-};
+import { STAGES } from './leadConfig.js';
+
+const UNLOGGED_PIN_COLOR = '#1A1A1A';
 
 const MARKER_ICONS = {
   legal: '<path d="M12 3v18M5 7h14M5 7L3 12L7 12ZM19 7L17 12L21 12Z" stroke="#F7F7F5" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -36,14 +33,9 @@ export function getCategoryIcon(category) {
 export function createMarkerIcon(category, pipelineStage) {
   const iconName = getCategoryIcon(category);
   const iconSvg = MARKER_ICONS[iconName] || MARKER_ICONS.default;
-  const hasLead = !!pipelineStage;
-  const badgeColor = hasLead ? STAGE_COLORS[pipelineStage] : null;
+  const pinColor = (pipelineStage && STAGES[pipelineStage]?.color) || UNLOGGED_PIN_COLOR;
 
-  const badge = hasLead
-    ? `<circle cx="28" cy="28" r="6.5" fill="${badgeColor}" stroke="#F7F7F5" stroke-width="2"/>${pipelineStage === 'closed' ? '<path d="M25.5 28l2 2 3.5-3.5" stroke="#F7F7F5" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>' : ''}`
-    : '';
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 30 18 30s18-16.5 18-30C36 8.06 27.94 0 18 0z" fill="#1A1A1A" stroke="#F7F7F5" stroke-width="1.5"/><g transform="translate(6, 6)">${iconSvg}</g>${badge}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48"><path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 30 18 30s18-16.5 18-30C36 8.06 27.94 0 18 0z" fill="${pinColor}" stroke="#F7F7F5" stroke-width="1.5"/><g transform="translate(6, 6)">${iconSvg}</g></svg>`;
 
   return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
 }
