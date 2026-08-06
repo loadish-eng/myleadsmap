@@ -41,9 +41,14 @@ export default function MapView({ loaded, center, places, leads, userLocation, o
   useEffect(() => {
     if (!mapRef.current || !window.google?.maps) return;
     const observer = new ResizeObserver(() => {
-      if (mapInstance.current) {
-        window.google.maps.event.trigger(mapInstance.current, 'resize');
-      }
+      if (!mapInstance.current) return;
+      window.google.maps.event.trigger(mapInstance.current, 'resize');
+      // The resize event alone only updates the map's internal size bookkeeping -- it doesn't
+      // make Google redraw/fetch tiles for the newly-exposed area, which leaves it blank/grey
+      // until some other interaction (pan, zoom) forces a redraw. Re-setting the center forces
+      // that redraw immediately.
+      const currentCenter = mapInstance.current.getCenter();
+      if (currentCenter) mapInstance.current.setCenter(currentCenter);
     });
     observer.observe(mapRef.current);
     return () => observer.disconnect();
