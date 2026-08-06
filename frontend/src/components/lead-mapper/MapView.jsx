@@ -41,14 +41,22 @@ export default function MapView({ loaded, center, places, leads, userLocation, o
   useEffect(() => {
     if (!mapRef.current || !window.google?.maps) return;
     const observer = new ResizeObserver(() => {
-      if (!mapInstance.current) return;
-      window.google.maps.event.trigger(mapInstance.current, 'resize');
-      // The resize event alone only updates the map's internal size bookkeeping -- it doesn't
-      // make Google redraw/fetch tiles for the newly-exposed area, which leaves it blank/grey
-      // until some other interaction (pan, zoom) forces a redraw. Re-setting the center forces
-      // that redraw immediately.
-      const currentCenter = mapInstance.current.getCenter();
-      if (currentCenter) mapInstance.current.setCenter(currentCenter);
+      const map = mapInstance.current;
+      if (!map) return;
+      window.google.maps.event.trigger(map, 'resize');
+      // Triggering 'resize' in the same tick as the ResizeObserver callback can still leave
+      // Maps working off stale (pre-resize) dimensions if the browser hasn't fully committed
+      // the new layout yet -- more likely on a big, fast size change (e.g. dragging the sidebar
+      // handle all the way to one extreme). Deferring a frame gives layout a chance to settle
+      // before asking Maps to recompute against it.
+      requestAnimationFrame(() => {
+        if (mapInstance.current !== map) return;
+        // setCenter to the exact LatLng Maps already has can be a no-op -- it doesn't always
+        // force a genuine tile refetch for the newly-exposed area. A tiny panBy-and-back forces
+        // a real bounds recompute regardless.
+        map.panBy(1, 0);
+        map.panBy(-1, 0);
+      });
     });
     observer.observe(mapRef.current);
     return () => observer.disconnect();
