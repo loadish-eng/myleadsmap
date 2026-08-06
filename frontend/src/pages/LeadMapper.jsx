@@ -50,15 +50,23 @@ export default function LeadMapper() {
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
+    // Right-click-dragging the resize handle would otherwise pop the browser's native context
+    // menu mid-drag and interrupt it -- suppress that for the duration of an active resize.
+    const handleContextMenu = (e) => {
+      if (resizingRef.current) e.preventDefault();
+    };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('contextmenu', handleContextMenu);
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('contextmenu', handleContextMenu);
     };
   }, []);
 
-  const startResize = () => {
+  const startResize = (e) => {
+    e.preventDefault();
     resizingRef.current = true;
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
@@ -264,6 +272,7 @@ export default function LeadMapper() {
 
       <div
         onMouseDown={startResize}
+        onContextMenu={(e) => e.preventDefault()}
         className="hidden md:block w-1.5 cursor-col-resize bg-border hover:bg-foreground/20 active:bg-foreground/40 transition-colors flex-shrink-0"
       />
 
