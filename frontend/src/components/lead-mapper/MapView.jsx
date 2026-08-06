@@ -40,26 +40,31 @@ export default function MapView({ loaded, center, places, leads, userLocation, o
 
   useEffect(() => {
     if (!mapRef.current || !window.google?.maps) return;
+    // A continuous drag of the sidebar handle fires ResizeObserver dozens of times (once per
+    // pixel of movement, roughly). Redrawing on every single one of those -- as the previous
+    // version of this effect did -- made things worse, not better: repeated real panBy nudges
+    // stacking up mid-drag caused visible jitter and competing/cancelled tile requests. Debounce
+    // so the actual redraw runs once, after the size has actually settled.
+    let debounceTimer = null;
     const observer = new ResizeObserver(() => {
-      const map = mapInstance.current;
-      if (!map) return;
-      window.google.maps.event.trigger(map, 'resize');
-      // Triggering 'resize' in the same tick as the ResizeObserver callback can still leave
-      // Maps working off stale (pre-resize) dimensions if the browser hasn't fully committed
-      // the new layout yet -- more likely on a big, fast size change (e.g. dragging the sidebar
-      // handle all the way to one extreme). Deferring a frame gives layout a chance to settle
-      // before asking Maps to recompute against it.
-      requestAnimationFrame(() => {
-        if (mapInstance.current !== map) return;
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const map = mapInstance.current;
+        if (!map) return;
+        window.google.maps.event.trigger(map, 'resize');
         // setCenter to the exact LatLng Maps already has can be a no-op -- it doesn't always
         // force a genuine tile refetch for the newly-exposed area. A tiny panBy-and-back forces
-        // a real bounds recompute regardless.
+        // a real bounds recompute regardless. Safe to do once, here, since this only runs after
+        // the drag has settled rather than on every intermediate frame.
         map.panBy(1, 0);
         map.panBy(-1, 0);
-      });
+      }, 200);
     });
     observer.observe(mapRef.current);
-    return () => observer.disconnect();
+    return () => {
+      clearTimeout(debounceTimer);
+      observer.disconnect();
+    };
   }, [loaded]);
 
   useEffect(() => {
